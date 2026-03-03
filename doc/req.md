@@ -1,0 +1,1 @@
+I need to find an open source or create a legacy monlote api lest do rest as a basekin to refactor into mictsopseriecs with separation of cinecst ddd pattens and good helat lve cusveleoma cioemsleoi so tsartuing pint ha sto eb a big ball of mud
