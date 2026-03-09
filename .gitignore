@@ -31,3 +31,6 @@ frontend/out/
 .pids/
 .logs/
 .claude/
+
+architect-prompt.txt
+prompt.txt
