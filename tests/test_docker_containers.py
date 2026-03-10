@@ -136,14 +136,16 @@ docker_required = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-@docker_required
-def docker_stack():
+def docker_stack(request):
     """
     Module-scoped fixture: brings up the full docker-compose stack before tests
     and tears it down afterwards.
 
     Uses a separate project name to avoid conflicting with a running dev stack.
     """
+    if not _docker_compose_available():
+        pytest.skip("docker compose not available in this environment")
+
     project = "zcloud_test"
     compose_cmd = f"docker compose -f {COMPOSE_FILE} -p {project}"
 

@@ -414,6 +414,60 @@ to execute only the unit tests. On a runner with Docker-in-Docker, use `make tes
 
 ---
 
+---
+
+## 8. System Hardening Scripts
+
+The `scripts/` package contains standalone tools for the hardening phase. All scripts require `poetry shell` (or an activated virtual environment with dependencies installed).
+
+### 8.1 Security Audit
+
+Audits all microservices for authentication, authorisation, and data-protection compliance. Auto-flags insecure defaults and writes a JSON report.
+
+```bash
+python scripts/security_audit.py --base-url http://localhost --output reports/security_audit_report.json
+```
+
+### 8.2 Rollback Strategy
+
+Performs automated failure detection and service rollback via `docker compose restart`, with post-rollback health validation and zero data loss guarantee.
+
+```bash
+# Roll back all services
+python scripts/rollback.py --service all --timeout 60
+
+# Roll back a specific service
+python scripts/rollback.py --service auth_service --timeout 60
+```
+
+### 8.3 Load Testing
+
+Evaluates system performance under 2× peak load using concurrent threads across 11 scaling phases. Generates a performance metrics report.
+
+```bash
+# 120-second representative run
+python scripts/load_test.py --target-rps 100 --duration 120 --workers 20
+
+# Full 2-hour stability test
+python scripts/load_test.py --target-rps 100 --duration 7200 --workers 20
+```
+
+### 8.4 Migration Validation
+
+Validates all ORM model schemas against expected column sets, VALID_DECISIONS values, and method contracts.
+
+```bash
+python scripts/validate_migration.py --output reports/migration_validation_report.json
+```
+
+### 8.5 Reports
+
+All scripts write JSON reports to `reports/` (created at runtime). The directory is `.gitignore`d — archive reports as CI artefacts.
+
+See `doc/system_hardening.md` for full details on the hardening process, test strategies, validation criteria, and identified issues.
+
+---
+
 ## Contributing
 
 1. Fork the repository and create a feature branch.
