@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: zcloud_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-zcloud}
+      POSTGRES_USER: ${DB_USER:-zcloud}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-zcloud_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zcloud_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zcloud} -d ${DB_NAME:-zcloud}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  health_service:
+    build:
+      context: .
+      dockerfile: services/health_service/Dockerfile
+    container_name: zcloud_health_service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-zcloud}
+      DB_USER: ${DB_USER:-zcloud}
+      DB_PASSWORD: ${DB_PASSWORD:-zcloud_secret}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zcloud_network
+    restart: on-failure
+
+networks:
+  zcloud_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

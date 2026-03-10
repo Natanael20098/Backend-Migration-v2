@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "zcloud-platform"
+version = "0.1.0"
+description = "ZCloud Security Platform — Python microservices backend"
+authors = ["ZCloud Engineering <engineering@zcloud.io>"]
+readme = "README.md"
+packages = [
+    { include = "services" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+flask = "^3.0"
+psycopg2-binary = "^2.9"
+python-dotenv = "^1.0"
+gunicorn = "^21.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4"
+pytest-cov = "^4.1"
+pytest-mock = "^3.12"
+requests = "^2.31"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Run unit tests by default; exclude docker-dependent integration tests
+# unless explicitly requested with: pytest -m docker
+addopts = "-v --tb=short"
+markers = [
+    "docker: marks tests that require a running Docker daemon and docker-compose (deselect with '-m not docker')",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
