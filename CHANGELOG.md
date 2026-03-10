@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased] – 2026-03-10 14:30
+
+### Added — System Hardening and Quality Assurance (Final Phase)
+
+#### Task 1: Security Audit Script
+- `scripts/__init__.py`: Package marker for the scripts package.
+- `scripts/security_audit.py`: Standalone security audit script that checks all three microservices for auth/authz/data-protection compliance. Performs: service availability checks, JWT enforcement validation, CORS header verification, authentication flow testing (valid/invalid credentials), authorisation enforcement (no-token, expired-token), data protection checks (FERNET_KEY, JWT_SECRET, bcrypt), and HTTPS readiness. Auto-remediates minor issues (logs CRITICAL + writes remediation note for insecure default JWT_SECRET). Generates `reports/security_audit_report.json` with severity-rated findings and PASS/FAIL overall status. Accepts `--base-url` and `--output` arguments.
+
+#### Task 2: Rollback Strategy Script
+- `scripts/rollback.py`: Automated rollback strategy script implementing failure detection (`detect_failure()` via `/health` polling), rollback execution (`docker compose restart` via subprocess), and post-rollback health validation (polls /health up to 12 times). Emits structured notification log lines: `ROLLBACK_START`, `ROLLBACK_COMPLETE`, `ROLLBACK_FAILED`. Guarantees zero data loss by design (restart-based rollback never touches the PostgreSQL volume). Enforces configurable timeout with WARNING on breach. Handles missing Docker gracefully. Generates `reports/rollback_report.json`. Accepts `--service` (all/individual), `--timeout`, `--compose-file`, `--base-url`, `--output` arguments.
+
+#### Task 3: Load Testing Framework
+- `scripts/load_test.py`: Load testing framework using `threading.Thread` + `requests`. Tests all three service endpoints across 11 scaling phases from 10% to 200% (2×) of target RPS. Collects per-request latency, status code, thread ID, and timestamps. Computes throughput, p50/p95/p99 latency, success/error rates. Identifies bottlenecks (p95 > 500ms or error rate > 5%) with recommendations. Generates `reports/load_test_report.json`. PASS if success rate ≥ 95% and no critical bottlenecks. Accepts `--base-url`, `--target-rps`, `--duration` (120s default; 7200s for 2-hour stability test), `--workers`, `--output`.
+
+#### Supporting Script
+- `scripts/validate_migration.py`: Schema consistency validation script. Imports all SQLAlchemy ORM models, creates in-memory SQLite engines, runs `Base.metadata.create_all()`, and inspects columns against expected sets. Validates `UnderwritingDecision.VALID_DECISIONS` and `User.get_roles()`. Generates `reports/migration_validation_report.json`. Exit code 0 = no critical issues; 1 = critical issues found.
+
+#### Task 4: System Hardening Documentation
+- `doc/system_hardening.md`: Comprehensive system hardening documentation with: (1) high-level architecture overview, (2) five test strategy subsections (security audit, unit tests, integration tests, migration validation, load testing) each with objective/scope/outcome, (3) 10-row validation criteria table with PASS/FAIL results, (4) four identified issues with severity and resolution actions, (5) complete guide for running the full hardening suite and extending each script.
+
+### Changed
+- `.gitignore`: Added `reports/` directory (generated at runtime, not committed).
+
 ## [Unreleased] – 2025-05-14 09:00
 
 ### Added — Security Operations Microservice (Phase 1)

@@ -26,3 +26,10 @@ target/
 
 # Node
 node_modules/
+
+# Generated reports (archived as CI artefacts, not committed)
+reports/
+
+# Coverage
+.coverage
+htmlcov/
