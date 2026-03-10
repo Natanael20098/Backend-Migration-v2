@@ -1,33 +1,28 @@
-# Java
-target/
-*.class
-*.jar
-*.war
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Poetry
+poetry.lock
+
+# Environment
+.env
+.env.local
 
 # IDE
 .idea/
-*.iml
 .vscode/
-.project
-.classpath
-.settings/
+*.swp
 
-# OS
-.DS_Store
-Thumbs.db
+# Java (legacy)
+target/
+*.class
+*.jar
 
-# Maven
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-release.properties
-
-# Node (frontend)
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-
-# Project files
-.pids/
-.logs/
-.claude/
+# Node
+node_modules/
