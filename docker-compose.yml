@@ -73,6 +73,34 @@ services:
       retries: 3
       start_period: 20s
 
+  data_service:
+    build:
+      context: .
+      dockerfile: services/data_service/Dockerfile
+    container_name: zcloud_data_service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-zcloud}
+      DB_USER: ${DB_USER:-zcloud}
+      DB_PASSWORD: ${DB_PASSWORD:-zcloud_secret}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zcloud_network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 networks:
   zcloud_network:
     driver: bridge
