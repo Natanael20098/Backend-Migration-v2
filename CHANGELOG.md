@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased] – 2025-05-14 09:00
+
+### Added — Security Operations Microservice (Phase 1)
+- `services/auth_service/__init__.py`: Package marker for the auth service.
+- `services/auth_service/config.py`: Security configuration — JWT settings (secret, algorithm, expiry, issuer, audience), CORS allowed origins/methods/headers, rate-limiting defaults, and Fernet symmetric encryption helpers (`encrypt_field`, `decrypt_field`) for sensitive data fields.
+- `services/auth_service/models.py`: SQLAlchemy ORM models — `User` (hashed password, roles) and `Session` (JWT token invalidation on logout).
+- `services/auth_service/db.py`: SQLAlchemy engine, `SessionFactory`, `init_db()` (idempotent table creation), and `get_db()` session helper.
+- `services/auth_service/jwt_filter.py`: JWT authentication filter — `jwt_authentication_filter()` Flask `before_request` hook that verifies Bearer tokens on all protected paths, returns **403** for missing/expired/invalid tokens, attaches claims to `flask.g.user_claims`, and logs all auth attempts. Also exports a `require_auth` decorator and `verify_token()` helper.
+- `services/auth_service/auth_routes.py`: Auth Blueprint — `POST /api/auth/login` (accepts `{username, password}`, returns `{token, user_id, roles}` **200**, **400/401/403** on failure); `POST /api/auth/logout` (invalidates session token); `GET /api/auth/validate` (confirms token is active).
+- `services/auth_service/app.py`: Flask application factory (`create_app`) — registers CORS (trusted origins only), Flask-Limiter (rate limiting), JWT filter, auth blueprint, health endpoint, and JSON error handlers; calls `init_db()` on startup.
+- `services/auth_service/Dockerfile`: Python 3.11-slim production image with gunicorn; installs system deps (`libpq-dev`, `gcc`, `libffi-dev`, `libssl-dev`), Poetry 2.x, and project packages.
+
+### Changed
+- `pyproject.toml`: Updated Python requirement to `^3.11`; added runtime dependencies: `PyJWT ^2.8`, `bcrypt ^4.1`, `flask-cors ^4.0`, `flask-limiter ^3.5`, `SQLAlchemy ^2.0`, `cryptography ^42.0`.
+- `docker-compose.yml`: Added `auth_service` container — PostgreSQL + auth env vars, port `8001`, `depends_on` postgres health check, restart policy, and container health check.
+- `.env.example`: Added auth service environment variables: `JWT_SECRET`, `JWT_EXPIRATION_SECONDS`, `FERNET_KEY`, `FRONTEND_URL`, `RATE_LIMIT_DEFAULT`, `RATE_LIMIT_LOGIN`.
+- `README.md`: Updated tech stack table; expanded project structure; added Section 7 documenting the auth service endpoints, JWT filter, security configuration, and all environment variables.
+
 ## [Unreleased] – 2025-05-13 10:30
 
 ### Added

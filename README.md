@@ -6,10 +6,12 @@ A Python-based microservices backend for the ZCloud Security Platform, migrated 
 
 | Layer | Technology |
 |---|---|
-| Language | Python 3.8 |
+| Language | Python 3.11 |
 | Web Framework | Flask 3.x |
 | Database | PostgreSQL 15 |
-| DB Driver | psycopg2 |
+| DB Driver | psycopg2 / SQLAlchemy 2.x |
+| Auth | PyJWT 2.x, bcrypt 4.x |
+| Security | Flask-CORS, Flask-Limiter, cryptography (Fernet) |
 | Dependency Manager | Poetry 2.x |
 | Container Runtime | Docker / docker-compose |
 
@@ -25,9 +27,17 @@ A Python-based microservices backend for the ZCloud Security Platform, migrated 
 ├── services/
 │   ├── shared/
 │   │   └── database.py         # PostgreSQL connection + health check logic
-│   └── health_service/
-│       ├── app.py              # Flask app — exposes GET /health
-│       └── Dockerfile          # Python 3.8 container image
+│   ├── health_service/
+│   │   ├── app.py              # Flask app — exposes GET /health
+│   │   └── Dockerfile          # Python 3.11 container image
+│   └── auth_service/
+│       ├── app.py              # Flask app factory — wires all components
+│       ├── auth_routes.py      # POST /api/auth/login, /logout; GET /api/auth/validate
+│       ├── jwt_filter.py       # JWT authentication filter (before_request hook)
+│       ├── config.py           # Security config: JWT, CORS, rate limiting, encryption
+│       ├── models.py           # SQLAlchemy models: User, Session
+│       ├── db.py               # SQLAlchemy engine + session factory
+│       └── Dockerfile          # Python 3.11 production container (gunicorn)
 ```
 
 ---
@@ -86,6 +96,14 @@ curl http://localhost:8000/health
 # Expected: {"database":"connected","status":"ok"}  HTTP 200
 ```
 
+### 1.6 Verify the auth service
+
+```bash
+# Health check
+curl http://localhost:8001/health
+# Expected: {"service":"auth_service","status":"ok"}  HTTP 200
+```
+
 ### 1.6 Stop all containers
 
 ```bash
@@ -93,6 +111,99 @@ docker-compose down
 # To also remove the persistent volume:
 docker-compose down -v
 ```
+
+---
+
+---
+
+## 7. Auth Service
+
+The `auth_service` implements the **Security Operations** bounded context migrated from the Java `AuthController`, `SecurityConfig`, and `JwtAuthenticationFilter`.
+
+### 7.1 Endpoints
+
+| Method | Path | Auth required | Description |
+|--------|------|--------------|-------------|
+| `POST` | `/api/auth/login` | No | Authenticate and receive a JWT |
+| `POST` | `/api/auth/logout` | Bearer token | Invalidate current session |
+| `GET` | `/api/auth/validate` | Bearer token | Confirm token is valid and active |
+| `GET` | `/health` | No | Service health check |
+
+### 7.2 Login
+
+```bash
+curl -X POST http://localhost:8001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "s3cr3t"}'
+
+# 200 OK
+{
+  "token": "<JWT>",
+  "user_id": "<uuid>",
+  "roles": ["ROLE_USER"]
+}
+
+# 401 Unauthorized
+{ "error": "Invalid username or password" }
+```
+
+### 7.3 Logout
+
+```bash
+curl -X POST http://localhost:8001/api/auth/logout \
+  -H "Authorization: Bearer <JWT>"
+
+# 200 OK
+{ "message": "Logged out successfully" }
+```
+
+### 7.4 Validate token
+
+```bash
+curl http://localhost:8001/api/auth/validate \
+  -H "Authorization: Bearer <JWT>"
+
+# 200 OK
+{ "valid": true, "subject": "<uuid>", "roles": ["ROLE_USER"] }
+
+# 401 / 403 on invalid / expired token
+```
+
+### 7.5 JWT authentication filter
+
+All non-public endpoints require a valid `Authorization: Bearer <token>` header.
+
+- **403** — token missing, expired, or invalid.
+- Claims are attached to `flask.g.user_claims` for downstream handlers.
+- Every attempt (success and failure) is logged at `INFO` / `WARNING` level.
+
+### 7.6 Security configuration
+
+| Setting | Value / Source |
+|---------|----------------|
+| JWT algorithm | HS256 |
+| JWT expiry | `JWT_EXPIRATION_SECONDS` env var (default 86400 s) |
+| JWT secret | `JWT_SECRET` env var |
+| CORS allowed origins | `http://localhost:3000` + `FRONTEND_URL` env var |
+| Rate limit (global) | `RATE_LIMIT_DEFAULT` env var (default `60 per minute`) |
+| Rate limit (login) | `RATE_LIMIT_LOGIN` env var (default `10 per minute`) |
+| Sensitive field encryption | Fernet symmetric encryption, key via `FERNET_KEY` env var |
+
+### 7.7 Environment variables for auth_service
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `JWT_SECRET` | HMAC-SHA256 signing secret (min 32 chars) | `change-me-in-production-secret-key-32c` |
+| `JWT_EXPIRATION_SECONDS` | Token lifetime in seconds | `86400` |
+| `FRONTEND_URL` | Additional trusted CORS origin | `http://localhost:3000` |
+| `FERNET_KEY` | Fernet key for field encryption | *(auto-generated if unset)* |
+| `RATE_LIMIT_DEFAULT` | Global rate limit (Flask-Limiter format) | `60 per minute` |
+| `RATE_LIMIT_LOGIN` | Login endpoint rate limit | `10 per minute` |
+| `DB_HOST` | PostgreSQL host | `postgres` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_NAME` | Database name | `zcloud` |
+| `DB_USER` | Database user | `zcloud` |
+| `DB_PASSWORD` | Database password | `zcloud_secret` |
 
 ---
 

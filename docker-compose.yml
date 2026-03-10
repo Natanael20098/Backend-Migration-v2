@@ -41,6 +41,38 @@ services:
       - zcloud_network
     restart: on-failure
 
+  auth_service:
+    build:
+      context: .
+      dockerfile: services/auth_service/Dockerfile
+    container_name: zcloud_auth_service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-zcloud}
+      DB_USER: ${DB_USER:-zcloud}
+      DB_PASSWORD: ${DB_PASSWORD:-zcloud_secret}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-secret-key-32c}
+      JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-86400}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FERNET_KEY: ${FERNET_KEY:-}
+      RATE_LIMIT_DEFAULT: ${RATE_LIMIT_DEFAULT:-60 per minute}
+      RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-10 per minute}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zcloud_network
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 networks:
   zcloud_network:
     driver: bridge
